@@ -1,32 +1,30 @@
 # database.py - the only file that talks to the SQLite database (app.db).
-# Planned functions:
+# My functions:
 #   get_connection()      -> opens app.db
 #   create_table()        -> CREATE TABLE IF NOT EXISTS
 #   add_vehicle(...)      -> INSERT
-#   get_vehicle(search)   -> SELECT (all, or by brand/plate)
 #   delete_vehicle(plate) -> DELETE
+#   plate_exists(plate)   -> SELECT, True if the plate is already saved
+#   get_vehicle(search)   -> SELECT (all, or by brand/plate)
 
 import sqlite3
 
-# Reversibility: all the SQL is in this file, so changing the database only touches here.
+# Reversibility: I keep all the SQL in this file, so changing the database only touches here
 DB_NAME = "app.db"
 
 
-# creating a function that returns the connection with the database.
-# as i am using the connection in multiple functions, the DRY principle is applied.
+# I create a function that returns the connection with the database.
+# As I use the connection in multiple functions, I apply the DRY principle
 def get_connection():
     return sqlite3.connect(DB_NAME)
-# it creates the database the first time it runs,
-# that is, in create_table. then, every time it runs
-# in other functions, it opens that connection.
-# the first time it creates it, then it opens it.
-# conn = get_connection lets conn access
-# the database through functions
-# conn.execute, conn.close, conn.commit......
+# The first time I run the app, create_table() creates app.db (if it is missing).
+# After that, every function just opens that connection.
+# With conn = get_connection(), I use conn.execute, conn.commit and conn.close
 
 
+# I create the vehicles table. plate is the PRIMARY KEY, so it can't repeat
 def create_table():
-    conn = get_connection()  # 'conn' now has access to the database. it can send requests.
+    conn = get_connection()  # Now conn has access to the database, so I can send requests
     conn.execute("""
         CREATE TABLE IF NOT EXISTS vehicles (
             plate TEXT PRIMARY KEY,
@@ -37,26 +35,27 @@ def create_table():
             km INTEGER NOT NULL
         )
     """)
-    conn.commit()  # SAVES CHANGES ON THE disc
-    conn.close()  # CLOSES THE CONNECTION
+    conn.commit()  # I save the changes on disk
+    conn.close()  # I close the connection
 
 
+# I insert a new car. The ? placeholders keep the values safe (no SQL injection)
 def add_vehicle(plate, brand, model, year, price, km):
     conn = get_connection()
     conn.execute("""
         INSERT INTO vehicles (plate, brand, model, year, price, km) VALUES (?, ?, ?, ?, ?, ?)
     """, (plate, brand, model, year, price, km))
-    conn.commit()  # SAVE CHANGES ON THE DISC
-    conn.close()  # CLOSE CONNECTION
+    conn.commit()  # I save the changes on disk
+    conn.close()  # I close the connection
 
 
-def delete_vehicle(plate):  # ab 038 hk
+def delete_vehicle(plate):  # I delete the car with this plate
     conn = get_connection()
     conn.execute(" DELETE FROM vehicles WHERE plate = ?", (plate,))
     conn.commit()
     conn.close()
 
-# row = [tuple,] -- so the list is not empty != 0 -- so true.
+# If I find the plate, row = [tuple] -> the list is not empty -> True
 
 
 def plate_exists(plate):
@@ -69,12 +68,12 @@ def plate_exists(plate):
         return True
 
 
-def get_vehicle(search=""):  # default value.
-    # fetchall() brings the results of the query and stores them as a list (of rows.)
-    conn = get_connection()  # opening the connection to the database.
-    if search == "":  # if this is true, the user didn't type a brand to filter
+def get_vehicle(search=""):  # I give search a default value (empty)
+    # fetchall() brings the results of the query as a list of rows
+    conn = get_connection()  # I open the connection to the database
+    if search == "":  # If search is empty, the user didn't type a brand or plate, so I return all cars
         rows = conn.execute("SELECT * FROM vehicles").fetchall()
-    else:
+    else:  # Otherwise I return only the cars with that brand or plate
         rows = conn.execute("SELECT * FROM vehicles WHERE brand = ? OR plate = ?", (search, search)).fetchall()
     conn.close()
-    return rows
+    return rows  # I return the list of tuples to gui.py
